@@ -1,5 +1,5 @@
 {
-  "name": "agentation",
+  "name": "@berachain/agentation",
   "version": "2.2.1",
   "description": "Visual feedback for AI coding agents",
   "license": "PolyForm-Shield-1.0.0",
@@ -22,6 +22,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "restricted"
+  },
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",

@@ -78,7 +78,7 @@ import {
   originalSetInterval,
 } from "../../utils/freeze-animations";
 
-import type { Annotation } from "../../types";
+import type { Annotation, SchemaField } from "../../types";
 import styles from "./styles.module.scss";
 
 /**
@@ -375,6 +375,7 @@ function generateOutput(
   pathname: string,
   detailLevel: OutputDetailLevel = "standard",
   reactMode: ReactComponentMode = "filtered",
+  schema?: SchemaField[],
 ): string {
   if (annotations.length === 0) return "";
 
@@ -403,9 +404,18 @@ function generateOutput(
 
   annotations.forEach((a, i) => {
     if (detailLevel === "compact") {
-      output += `${i + 1}. **${a.element}**: ${a.comment}`;
+      output += `${i + 1}. **${a.element}**${a.comment ? `: ${a.comment}` : ""}`;
       if (a.selectedText) {
         output += ` (re: "${a.selectedText.slice(0, 30)}${a.selectedText.length > 30 ? "..." : ""}")`;
+      }
+      if (a.customFields && schema) {
+        const pairs = schema
+          .filter((f) => a.customFields![f.key] !== undefined && a.customFields![f.key] !== "" && a.customFields![f.key] !== false)
+          .map((f) => {
+            const val = a.customFields![f.key];
+            return `${f.label}: ${typeof val === "boolean" ? (val ? "Yes" : "No") : val}`;
+          });
+        if (pairs.length > 0) output += ` [${pairs.join(", ")}]`;
       }
       output += "\n";
     } else if (detailLevel === "forensic") {
@@ -442,7 +452,16 @@ function generateOutput(
       if (a.reactComponents) {
         output += `**React:** ${a.reactComponents}\n`;
       }
-      output += `**Feedback:** ${a.comment}\n\n`;
+      if (a.customFields && schema) {
+        schema.forEach((f) => {
+          const val = a.customFields![f.key];
+          if (val !== undefined && val !== "" && val !== false) {
+            output += `**${f.label}:** ${typeof val === "boolean" ? "Yes" : val}\n`;
+          }
+        });
+      }
+      if (a.comment) output += `**Feedback:** ${a.comment}\n`;
+      output += "\n";
     } else {
       // Standard and detailed modes
       output += `### ${i + 1}. ${a.element}\n`;
@@ -471,7 +490,17 @@ function generateOutput(
         output += `**Context:** ${a.nearbyText.slice(0, 100)}\n`;
       }
 
-      output += `**Feedback:** ${a.comment}\n\n`;
+      if (a.customFields && schema) {
+        schema.forEach((f) => {
+          const val = a.customFields![f.key];
+          if (val !== undefined && val !== "" && val !== false) {
+            output += `**${f.label}:** ${typeof val === "boolean" ? "Yes" : val}\n`;
+          }
+        });
+      }
+
+      if (a.comment) output += `**Feedback:** ${a.comment}\n`;
+      output += "\n";
     }
   });
 
@@ -514,6 +543,16 @@ export type PageFeedbackToolbarCSSProps = {
   onSessionCreated?: (sessionId: string) => void;
   /** Webhook URL to receive annotation events. */
   webhookUrl?: string;
+  /** Schema defining extra input fields shown in the annotation popup. */
+  schema?: SchemaField[];
+  /** WebSocket URL for quick action (e.g., "ws://localhost:8787/ws"). Button only appears when set. */
+  quickActionWSUrl?: string;
+  /** Text prefix prepended to annotation data in the payload. Defaults to "Fix Me". */
+  quickActionPrefix?: string;
+  /** Tooltip label for the quick action button. Defaults to "Fix Me". */
+  quickActionLabel?: string;
+  /** URL to a custom icon image for the quick action button. Uses a built-in wrench icon when not set. */
+  quickActionIconUrl?: string;
 };
 
 /** Alias for PageFeedbackToolbarCSSProps */
@@ -538,6 +577,11 @@ export function PageFeedbackToolbarCSS({
   sessionId: initialSessionId,
   onSessionCreated,
   webhookUrl,
+  schema,
+  quickActionWSUrl,
+  quickActionPrefix = "Fix Me",
+  quickActionLabel = "Fix Me",
+  quickActionIconUrl,
 }: PageFeedbackToolbarCSSProps = {}) {
   const [isActive, setIsActive] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -2883,14 +2927,19 @@ export function PageFeedbackToolbarCSS({
 
   // Add annotation
   const addAnnotation = useCallback(
-    (comment: string) => {
+    (fields: Record<string, string | boolean>) => {
       if (!pendingAnnotation) return;
+
+      const { comment: commentField, ...rest } = fields;
+      const comment = (commentField as string) ?? "";
+      const customFields = Object.keys(rest).length > 0 ? rest : undefined;
 
       const newAnnotation: Annotation = {
         id: Date.now().toString(),
         x: pendingAnnotation.x,
         y: pendingAnnotation.y,
         comment,
+        ...(customFields ? { customFields } : {}),
         element: pendingAnnotation.element,
         elementPath: pendingAnnotation.elementPath,
         timestamp: Date.now(),
@@ -3196,10 +3245,14 @@ export function PageFeedbackToolbarCSS({
 
   // Update annotation (edit mode submit)
   const updateAnnotation = useCallback(
-    (newComment: string) => {
+    (fields: Record<string, string | boolean>) => {
       if (!editingAnnotation) return;
 
-      const updatedAnnotation = { ...editingAnnotation, comment: newComment };
+      const { comment: commentField, ...rest } = fields;
+      const newComment = (commentField as string) ?? "";
+      const customFields = Object.keys(rest).length > 0 ? rest : undefined;
+
+      const updatedAnnotation = { ...editingAnnotation, comment: newComment, ...(customFields ? { customFields } : {}) };
 
       setAnnotations((prev) =>
         prev.map((a) =>
@@ -3304,6 +3357,7 @@ export function PageFeedbackToolbarCSS({
       displayUrl,
       settings.outputDetail,
       effectiveReactMode,
+      schema,
     );
     if (!output && drawStrokes.length === 0) return;
     if (!output) output = `## Page Feedback: ${displayUrl}\n`;
@@ -3472,6 +3526,7 @@ export function PageFeedbackToolbarCSS({
       displayUrl,
       settings.outputDetail,
       effectiveReactMode,
+      schema,
     );
     if (!output) return;
 
@@ -3506,6 +3561,51 @@ export function PageFeedbackToolbarCSS({
     effectiveReactMode,
     settings.autoClearAfterCopy,
     clearAll,
+  ]);
+
+  // Quick action - build the annotation message text for the popup to send via WebSocket
+  const buildQuickActionMessage = useCallback((fields: Record<string, string | boolean>): string => {
+    const displayUrl =
+      typeof window !== "undefined"
+        ? window.location.pathname +
+          window.location.search +
+          window.location.hash
+        : pathname;
+
+    const context = pendingAnnotation || editingAnnotation;
+    const comment = (fields["comment"] as string)?.trim() || "";
+
+    const tempAnnotation: Annotation = {
+      ...context,
+      id: "quick-action",
+      x: context?.x ?? 0,
+      y: context?.y ?? 0,
+      comment,
+      element: context?.element ?? "Unknown",
+      elementPath: context?.elementPath ?? "",
+      timestamp: Date.now(),
+      customFields: Object.fromEntries(
+        Object.entries(fields).filter(([k]) => k !== "comment"),
+      ),
+    };
+
+    const output = generateOutput(
+      [tempAnnotation],
+      displayUrl,
+      settings.outputDetail,
+      effectiveReactMode,
+      schema,
+    );
+
+    return `${quickActionPrefix} ${output}`;
+  }, [
+    quickActionPrefix,
+    pendingAnnotation,
+    editingAnnotation,
+    pathname,
+    settings.outputDetail,
+    effectiveReactMode,
+    schema,
   ]);
 
   // Toolbar dragging - mousemove and mouseup
@@ -3772,6 +3872,7 @@ export function PageFeedbackToolbarCSS({
           sendToWebhook();
         }
       }
+
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -5037,6 +5138,7 @@ export function PageFeedbackToolbarCSS({
                       element={pendingAnnotation.element}
                       selectedText={pendingAnnotation.selectedText}
                       computedStyles={pendingAnnotation.computedStylesObj}
+                      schema={schema}
                       placeholder={
                         pendingAnnotation.element === "Area selection"
                           ? "What should change in this area?"
@@ -5046,6 +5148,10 @@ export function PageFeedbackToolbarCSS({
                       }
                       onSubmit={addAnnotation}
                       onCancel={cancelAnnotation}
+                      quickActionWSUrl={quickActionWSUrl}
+                      buildQuickActionMessage={quickActionWSUrl ? buildQuickActionMessage : undefined}
+                      quickActionLabel={quickActionLabel}
+                      quickActionIconUrl={quickActionIconUrl}
                       isExiting={pendingExiting}
                       lightMode={!isDarkMode}
                       accentColor={
@@ -5170,12 +5276,17 @@ export function PageFeedbackToolbarCSS({
                 computedStyles={parseComputedStylesString(
                   editingAnnotation.computedStyles,
                 )}
+                schema={schema}
+                initialCustomValues={{ comment: editingAnnotation.comment, ...editingAnnotation.customFields }}
                 placeholder="Edit your feedback..."
-                initialValue={editingAnnotation.comment}
                 submitLabel="Save"
                 onSubmit={updateAnnotation}
                 onCancel={cancelEditAnnotation}
                 onDelete={() => deleteAnnotation(editingAnnotation.id)}
+                quickActionWSUrl={quickActionWSUrl}
+                buildQuickActionMessage={quickActionWSUrl ? buildQuickActionMessage : undefined}
+                quickActionLabel={quickActionLabel}
+                quickActionIconUrl={quickActionIconUrl}
                 isExiting={editExiting}
                 lightMode={!isDarkMode}
                 accentColor={

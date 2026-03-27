@@ -19,5 +19,11 @@ export function ToolbarProvider() {
     ? "http://localhost:4747"
     : undefined;
 
-  return <Agentation endpoint={endpoint} />;
+  return (
+    <Agentation
+      endpoint={endpoint}
+      quickActionWSUrl="ws://localhost:8787/ws"
+      quickActionPrefix="Fix me"
+    />
+  );
 }

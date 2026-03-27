@@ -18,7 +18,7 @@ export { PageFeedbackToolbarCSS } from "./components/page-toolbar-css";
 export type { DemoAnnotation, AgentationProps } from "./components/page-toolbar-css";
 
 // Shared components (for building custom UIs)
-export { AnnotationPopupCSS } from "./components/annotation-popup-css";
+export { AnnotationPopupCSS, DEFAULT_SCHEMA } from "./components/annotation-popup-css";
 export type {
   AnnotationPopupCSSProps,
   AnnotationPopupCSSHandle,
@@ -47,4 +47,4 @@ export {
 } from "./utils/storage";
 
 // Types
-export type { Annotation } from "./types";
+export type { Annotation, SchemaField } from "./types";

@@ -1,4 +1,25 @@
 // =============================================================================
+// Schema
+// =============================================================================
+
+export type SchemaField = {
+  /** Unique key used to store the value in customFields */
+  key: string;
+  /** Display label shown in the annotation popup */
+  label: string;
+  /** Input type */
+  type: "text" | "select" | "checkbox";
+  /** Placeholder text (text type only) */
+  placeholder?: string;
+  /** Options list (select type only) */
+  options?: string[];
+  /** Default value */
+  defaultValue?: string | boolean;
+  /** Render as a multiline textarea instead of a single-line input (text type only) */
+  multiline?: boolean;
+};
+
+// =============================================================================
 // Shared Types
 // =============================================================================
 
@@ -29,6 +50,7 @@ export type Annotation = {
   }>; // Individual bounding boxes for multi-select hover highlighting
   drawingIndex?: number; // Index of linked drawing stroke (click-to-annotate)
   strokeId?: string; // Unique ID of linked drawing stroke
+  customFields?: Record<string, string | boolean>; // Values from schema fields
 
   // Protocol fields (added when syncing to server)
   sessionId?: string;
