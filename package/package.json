@@ -1,6 +1,6 @@
 {
   "name": "@berachain/agentation",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Visual feedback for AI coding agents",
   "license": "PolyForm-Shield-1.0.0",
   "main": "./dist/index.js",
@@ -21,8 +21,12 @@
   },
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "scripts"
   ],
+  "bin": {
+    "agentation-setup-skills": "scripts/setup-skills.sh"
+  },
   "publishConfig": {
     "access": "restricted"
   },

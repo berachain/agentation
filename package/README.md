@@ -55,6 +55,10 @@ The toolbar appears in the bottom-right corner. Click to activate, then click an
 | `sessionId` | `string` | - | Pre-existing session ID to join |
 | `onSessionCreated` | `(sessionId: string) => void` | - | Called when a new session is created |
 | `webhookUrl` | `string` | - | Webhook URL to receive annotation events |
+| `quickActionWSUrl` | `string` | - | WebSocket URL for quick action (e.g., `"ws://localhost:8787/ws"`) |
+| `quickActionPrefix` | `string` | `"Fix Me"` | Text prefix for quick action messages |
+| `quickActionLabel` | `string` | `"Fix Me"` | Tooltip label for the quick action button |
+| `quickActionIconUrl` | `string` | - | Custom icon URL for the quick action button |
 
 ### Programmatic Integration
 
@@ -114,6 +118,32 @@ type Annotation = {
 ```
 
 > **Note:** This is a simplified type. The full type includes additional fields for Agent Sync (`url`, `status`, `thread`, `reactComponents`, etc.). See [agentation.dev/schema](https://agentation.dev/schema) for the complete schema.
+
+## Quick Action (Fix Me)
+
+Send annotations directly to an AI agent via WebSocket. When configured, a "Fix Me" button replaces the "Add" button in the annotation popup.
+
+```tsx
+<Agentation
+  quickActionWSUrl="ws://localhost:8787/ws"
+  quickActionPrefix="Fix me"
+/>
+```
+
+The agent can respond with:
+- `completed` — fix done, button shows green
+- `Error` — fix failed, button shows red
+- `refine: <message>` — opens a chat panel for back-and-forth clarification
+
+### Setup Skills for Claude Code
+
+The package includes a skill that teaches Claude Code how to handle Fix Me annotations. Run the setup script from your project root:
+
+```bash
+npx agentation-setup-skills
+```
+
+This copies the skill to `.claude/skills/` where Claude Code picks it up automatically.
 
 ## How it works
 
