@@ -1,6 +1,18 @@
-# Agentation Package
+# Agentation
 
-This is the publishable npm package. Changes here affect everyone who installs `agentation`.
+Visual feedback toolbar for AI coding agents. Lets users annotate elements on a page and send structured fix requests to Claude Code.
+
+## Claude Code Integration
+
+When a **"Fix me"** message arrives via fakechat, **always follow the `fix-me` skill** (`.claude/skills/fix-me.md`). This skill defines the exact protocol for parsing annotations, making fixes, and responding with `completed`, `Error`, or `refine: <question>`.
+
+Run `npx agentation-setup-skills` to install skills and hooks into your project.
+
+---
+
+## Package Development
+
+This is the publishable npm package. Changes here affect everyone who installs `@berachain/agentation`.
 
 ## Critical Rules
 
