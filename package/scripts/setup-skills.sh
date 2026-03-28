@@ -1,8 +1,19 @@
 #!/bin/sh
 # Setup agentation skills for Claude Code
-# Run from your project root: npx @berachain/agentation-setup-skills
+# Run from your project root: npx agentation-setup-skills
 
-PACKAGE_DIR="$(dirname "$(dirname "$0")")"
+# Resolve the real path of this script (follows symlinks from .bin/)
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+  DIR="$(cd "$(dirname "$SCRIPT")" && pwd)"
+  SCRIPT="$(readlink "$SCRIPT")"
+  case "$SCRIPT" in
+    /*) ;;
+    *) SCRIPT="$DIR/$SCRIPT" ;;
+  esac
+done
+
+PACKAGE_DIR="$(cd "$(dirname "$SCRIPT")/.." && pwd)"
 SKILLS_SRC="$PACKAGE_DIR/skills"
 SKILLS_DEST=".claude/skills"
 
