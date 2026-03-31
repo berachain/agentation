@@ -130,6 +130,8 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const showChat = chatMessages.length > 0;
+    const [chatFlipLeft, setChatFlipLeft] = useState(false);
+    const chatPanelRef = useRef<HTMLDivElement>(null);
 
     // Cleanup WebSocket on unmount
     useEffect(() => {
@@ -139,6 +141,14 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
         }
       };
     }, []);
+
+    // Flip chat panel to the left if it would overflow the viewport
+    useEffect(() => {
+      if (!showChat || !popupRef.current) return;
+      const rect = popupRef.current.getBoundingClientRect();
+      const chatWidth = 240 + 8; // .chatPanel width + gap
+      setChatFlipLeft(rect.right + chatWidth > window.innerWidth);
+    }, [showChat]);
 
     // Auto-scroll chat to bottom
     useEffect(() => {
@@ -536,7 +546,7 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
         {/* Floating chat panel - appears beside popup on refine */}
         {showChat && (
           <div
-            className={`${styles.chatPanel} ${lightMode ? styles.light : ""}`}
+            className={`${styles.chatPanel} ${chatFlipLeft ? styles.chatLeft : ""} ${lightMode ? styles.light : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.chatHeader}>Chat</div>
