@@ -30,12 +30,21 @@ mkdir -p "$SKILLS_DEST"
 
 echo "Skills:"
 for skill in "$SKILLS_SRC"/*.md; do
-  name="$(basename "$skill")"
-  if [ -e "$SKILLS_DEST/$name" ]; then
-    echo "  skip: $name (already exists)"
+  filename="$(basename "$skill" .md)"
+  skill_dir="$SKILLS_DEST/$filename"
+  if [ -e "$skill_dir/SKILL.md" ]; then
+    echo "  skip: $filename (already exists)"
   else
-    cp "$skill" "$SKILLS_DEST/$name"
-    echo "  added: $name"
+    # Migrate standalone .md file if it exists from older versions
+    if [ -f "$SKILLS_DEST/$filename.md" ] && [ ! -d "$skill_dir" ]; then
+      mkdir -p "$skill_dir"
+      mv "$SKILLS_DEST/$filename.md" "$skill_dir/SKILL.md"
+      echo "  migrated: $filename.md -> $filename/SKILL.md"
+    else
+      mkdir -p "$skill_dir"
+      cp "$skill" "$skill_dir/SKILL.md"
+      echo "  added: $filename/SKILL.md"
+    fi
   fi
 done
 
