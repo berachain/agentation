@@ -160,7 +160,7 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
     const handleWSMessage = useCallback((event: MessageEvent) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type !== "msg" || msg.replyTo !== messageIdRef.current) return;
+        if (msg.type !== "msg" || !messageIdRef.current) return;
 
         const text = (msg.text || "").trim();
         const lower = text.toLowerCase();
@@ -222,7 +222,6 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
       if (!text || !wsRef.current || wsRef.current.readyState !== 1) return;
 
       const id = `u${Date.now()}-qa`;
-      messageIdRef.current = id;
 
       setChatMessages((prev) => [
         ...prev,
